@@ -5,10 +5,12 @@ $targetDir = Join-Path -Path "." -ChildPath $filename
 # if .venv exists
 if (Test-Path -Path $targetDir) {
 	.\.venv\Scripts\Activate.ps1
-	uv pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
+	# Use cuda if ya'll have it.
+	uv pip install --pre torch torchvision torchaudio
 	uv pip install ultralytics
     uv pip install jupyter
 	Write-Host "Enter the venv with: .venv\Scripts\activate"
+	$env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
 } 
 else {
 	if (-not (Get-Command uv -ErrorAction SilentlyContinue) ) {
@@ -18,7 +20,8 @@ else {
 	}
 	uv venv
 	.\.venv\Scripts\Activate.ps1
-	uv pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
+	# Use Cuda tho if ya'll got it
+	uv pip install --pre torch torchvision torchaudio 
 	uv pip install ultralytics
     uv pip install jupyter
         Write-Host "Enter the venv with: .venv\Scripts\activate"
