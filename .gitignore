@@ -9,3 +9,4 @@ notebook/__pycache__/organize.cpython-313.pyc
 notebook/test_hermes.txt
 notebook/datasets/
 /runs/segment/predict
+notebook/__pycache__
