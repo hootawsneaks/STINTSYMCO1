@@ -7,7 +7,7 @@ if (Test-Path -Path $targetDir) {
 	.\.venv\Scripts\Activate.ps1
 	uv pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
 	uv pip install ultralytics
-    uv pip install jupyter
+   uv pip install jupyter
 	Write-Host "Enter the venv with: .venv\Scripts\activate"
 } 
 else {
@@ -20,7 +20,7 @@ else {
 	.\.venv\Scripts\Activate.ps1
 	uv pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
 	uv pip install ultralytics
-  uv pip install jupyter
+   uv pip install jupyter
         Write-Host "Enter the venv with: .venv\Scripts\activate"
 }
 
