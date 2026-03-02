@@ -52,13 +52,13 @@ def create_xray_augmentation_pipeline():
         # Geometric transforms (small, realistic)
         A.HorizontalFlip(p=0.3),  # Left-right flip is realistic for symmetrical body parts
         A.Rotate(limit=10, p=0.3),  # Very small rotations (±10° max)
-        A.ShiftScaleRotate(shift_limit=0.03, scale_limit=0.03, rotate_limit=8, p=0.2),
+        A.Affine(translate_percent=(-0.03, 0.03), scale=(0.97, 1.03), rotate=(-8, 8), p=0.2),
         
         # Intensity/brightness variations (subtle exposure differences)
         A.RandomBrightnessContrast(brightness_limit=0.05, contrast_limit=0.05, p=0.4),
         
         # VERY SUBTLE noise (X-rays have quantum mottle, not TV static)
-        A.GaussNoise(std_range=(0.005, 0.01), p=0.2),  # Extremely subtle noise (0.5-1% of max)
+        A.GaussNoise(std_range=(0.01, 0.05), p=0.2),  # Extremely subtle noise (0.5-1% of max)
         
         # Almost imperceptible blur (slight patient motion or focus)
         A.GaussianBlur(blur_limit=(1, 3), p=0.1),  # Minimal blur
