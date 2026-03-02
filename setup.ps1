@@ -22,8 +22,7 @@ else {
 	.\.venv\Scripts\Activate.ps1
 	# Use Cuda tho if ya'll got it
 	uv pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
-	uv pip install ultralytics
-    uv pip install jupyter
+	uv pip install ultralytics jupyter albumentations
         Write-Host "Enter the venv with: .venv\Scripts\activate"
 }
 

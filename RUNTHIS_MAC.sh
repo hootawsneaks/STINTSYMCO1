@@ -14,6 +14,6 @@ else
     uv venv
     source .venv/bin/activate
     uv pip install --pre torch torchvision torchaudio
-    uv pip install ultralytics jupyter
+    uv pip install ultralytics jupyter albumentations
     echo "Enter the venv with: source .venv/bin/activate"
 fi
