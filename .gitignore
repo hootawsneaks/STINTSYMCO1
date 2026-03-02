@@ -1,3 +1,9 @@
 .venv
 notebooks/dataset
 notebooks/runs
+.DS_Store
+notebook/datasets/
+FracAtlas
+notebook/.ipynb_checkpoints/Prediction_8s-checkpoint.ipynb
+notebook/__pycache__/organize.cpython-313.pyc
+notebook/test_hermes.txt
