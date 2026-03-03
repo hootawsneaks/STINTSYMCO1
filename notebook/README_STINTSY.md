@@ -13,8 +13,8 @@ notebook/
 ├── Distribution/         # Contains train/valid/test CSV splits
 └── [scripts and notebooks]
 ```
-### 3. Put the FracAtlas Dataset in the root directory (outside notebook folder)
-### 4. Copy FracAtlas/images/Fractured and Non_fractured into ./notebook/images 
+### 3. Put the FracAtlas Dataset in the root directory (outside notebook folder, these are for labels)
+### 4. Copy FracAtlas/images/Fractured and Non_fractured into ./notebook/datasets/images (these are for organizing)
 ### 5. Run augment_with_labels.py (python augment_with_labels.py --augmentations-per-image 3)
 ### 6. Run organize_dataset.py (python organize_dataset.py)
 

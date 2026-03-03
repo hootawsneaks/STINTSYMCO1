@@ -1,6 +1,6 @@
-train: ../train/images
-val: ../valid/images
-test: ../test/images
+  train: ./datasets/dataset/train/images
+  val: ./datasets/dataset/valid/images
+  test: ./datasets/dataset/test/images
 
-nc: 1
-names: ["fractured"]
+  nc: 1
+  names: ["fractured"]
