@@ -20,6 +20,7 @@ and corresponding labels from labels/Fractured_Aug/ if they exist.
 import os
 import sys
 import shutil
+import random
 from pathlib import Path
 import argparse
 
@@ -87,7 +88,7 @@ def find_label_source(image_name, label_type, yolo_labels_dir, augmented_labels_
 
 def organize_split(split_name, csv_path, output_dir, fractured_dir, non_fractured_dir,
                    yolo_labels_dir, fractured_aug_dir=None, augmented_labels_dir=None,
-                   dry_run=False):
+                   nonfrac_images=None, dry_run=False):
     """Organize a single split."""
     print(f"\n=== Organizing {split_name.upper()} split ===")
     
@@ -200,6 +201,23 @@ def organize_split(split_name, csv_path, output_dir, fractured_dir, non_fracture
             if idx % 50 == 0 or idx == len(augmented_images):
                 print(f"  Processed {idx}/{len(augmented_images)} augmented images")
     
+    # Add non-fractured images with empty label files
+    if nonfrac_images:
+        print(f"\nAdding {len(nonfrac_images)} non-fractured images...")
+        for idx, nf_path in enumerate(nonfrac_images, 1):
+            dest_image_path = split_images_dir / nf_path.name
+            dest_label_path = split_labels_dir / (nf_path.stem + '.txt')
+
+            if not dry_run:
+                shutil.copy2(nf_path, dest_image_path)
+                open(dest_label_path, 'w').close()  # empty label = no fracture
+
+            stats["images"] += 1
+            stats["labels"] += 1
+
+            if idx % 100 == 0 or idx == len(nonfrac_images):
+                print(f"  Processed {idx}/{len(nonfrac_images)} non-fractured images")
+
     # Summary
     print(f"\n{split_name.upper()} split summary:")
     print(f"  Images: {stats['images']}")
@@ -267,15 +285,39 @@ def main():
             print(f"Error: {name} CSV not found: {path}")
             sys.exit(1)
     
+    # Split non-fractured images proportionally to match fractured split ratios
+    all_nonfrac = sorted((images_dir / "Non_fractured").glob("*.jpg")) + \
+                  sorted((images_dir / "Non_fractured").glob("*.png"))
+    random.seed(42)
+    random.shuffle(all_nonfrac)
+
+    n_frac_train = len(parse_csv(csv_files["train"]))
+    n_frac_val   = len(parse_csv(csv_files["valid"]))
+    n_frac_test  = len(parse_csv(csv_files["test"]))
+    n_frac_total = n_frac_train + n_frac_val + n_frac_test
+    n_nf_total   = len(all_nonfrac)
+
+    n_nf_val   = round(n_nf_total * n_frac_val   / n_frac_total)
+    n_nf_test  = round(n_nf_total * n_frac_test  / n_frac_total)
+    n_nf_train = n_nf_total - n_nf_val - n_nf_test
+
+    nonfrac_splits = {
+        "train": all_nonfrac[:n_nf_train],
+        "valid": all_nonfrac[n_nf_train:n_nf_train + n_nf_val],
+        "test":  all_nonfrac[n_nf_train + n_nf_val:],
+    }
+
+    print(f"\nNon-fractured split: {n_nf_train} train | {n_nf_val} valid | {n_nf_test} test")
+
     # Organize each split
     total_images = 0
     total_labels = 0
-    
+
     for split_name, csv_path in csv_files.items():
         # Only pass augmented dirs for training split
         split_aug_dir = fractured_aug_dir if (split_name == "train" and has_augmented) else None
         split_aug_labels = augmented_labels_dir if (split_name == "train" and has_augmented) else None
-        
+
         images, labels = organize_split(
             split_name=split_name,
             csv_path=csv_path,
@@ -285,9 +327,10 @@ def main():
             yolo_labels_dir=yolo_labels_dir,
             fractured_aug_dir=split_aug_dir,
             augmented_labels_dir=split_aug_labels,
+            nonfrac_images=nonfrac_splits[split_name],
             dry_run=args.dry_run
         )
-        
+
         total_images += images
         total_labels += labels
     
