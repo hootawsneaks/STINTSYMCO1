@@ -49,28 +49,28 @@ def write_yolo_label(label_path, bboxes):
 def create_xray_augmentation_pipeline():
     """Create realistic X-ray augmentation pipeline with bounding box support."""
     return A.Compose([
-        # Geometric transforms (small, realistic)
-        A.HorizontalFlip(p=0.3),  # Left-right flip is realistic for symmetrical body parts
-        A.Rotate(limit=10, p=0.3),  # Very small rotations (±10° max)
-        A.Affine(translate_percent=(-0.03, 0.03), scale=(0.97, 1.03), rotate=(-8, 8), p=0.2),
-        
-        # Intensity/brightness variations (subtle exposure differences)
-        A.RandomBrightnessContrast(brightness_limit=0.05, contrast_limit=0.05, p=0.4),
-        
-        # VERY SUBTLE noise (X-rays have quantum mottle, not TV static)
-        A.GaussNoise(std_range=(0.01, 0.05), p=0.2),  # Extremely subtle noise (0.5-1% of max)
-        
-        # Almost imperceptible blur (slight patient motion or focus)
-        A.GaussianBlur(blur_limit=(1, 3), p=0.1),  # Minimal blur
-        
-        # Very mild elastic transform
-        A.ElasticTransform(alpha=0.5, sigma=15, p=0.05),  # alpha_affine removed
-        
-        # X-ray specific: subtle gamma adjustment
-        A.RandomGamma(gamma_limit=(95, 105), p=0.2),  # ±5% only
-        
-        # CLAHE for contrast enhancement (common in medical imaging)
-        A.CLAHE(clip_limit=1.0, tile_grid_size=(8, 8), p=0.15),
+        # Geometric transforms — more aggressive for diverse spatial variations
+        A.HorizontalFlip(p=0.5),  # 50%: symmetric body parts, realistic
+        A.Rotate(limit=25, p=0.5),  # ±25°: patient positioning variance
+        A.Affine(translate_percent=(-0.05, 0.05), scale=(0.90, 1.10), rotate=(-15, 15), p=0.4),
+
+        # Intensity/brightness — wider range to simulate exposure differences
+        A.RandomBrightnessContrast(brightness_limit=0.15, contrast_limit=0.15, p=0.6),
+
+        # Noise — slightly more prominent quantum mottle
+        A.GaussNoise(std_range=(0.02, 0.08), p=0.35),
+
+        # Blur — patient motion or slight defocus
+        A.GaussianBlur(blur_limit=(1, 5), p=0.2),
+
+        # Elastic transform — mild tissue/bone deformation
+        A.ElasticTransform(alpha=1.0, sigma=20, p=0.15),
+
+        # Gamma — wider exposure correction range
+        A.RandomGamma(gamma_limit=(85, 115), p=0.35),
+
+        # CLAHE — stronger contrast enhancement
+        A.CLAHE(clip_limit=2.0, tile_grid_size=(8, 8), p=0.25),
     ], bbox_params=A.BboxParams(format='yolo', label_fields=['class_labels']))
 
 def main():
