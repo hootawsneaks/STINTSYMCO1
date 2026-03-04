@@ -9,7 +9,7 @@ I hope you guys have good pc's
 ```
 notebook/
 ├── datasets/
-│   └── dataset/          # Will be created by the scripts
+│   └── images/           # Copy the image folder from FracAtlas
 ├── Distribution/         # Contains train/valid/test CSV splits
 └── [scripts and notebooks]
 ```
