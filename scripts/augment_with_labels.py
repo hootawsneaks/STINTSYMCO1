@@ -9,7 +9,7 @@ import sys
 import cv2
 import numpy as np
 import albumentations as A
-from albumentations.pytorch import ToTensorV2
+
 from pathlib import Path
 import argparse
 
@@ -91,33 +91,33 @@ def main():
     
     # Set up paths
     script_dir = Path(__file__).parent
-    base_dir = script_dir
-    data_dir = base_dir / "datasets"
+    notebook_dir = script_dir.parent / "notebook"
+    data_dir = notebook_dir / "datasets"
     images_dir = data_dir / "images"
     fractured_dir = images_dir / "Fractured"
     
-    # Handle output directories
+    # Handle output directories (relative paths resolved from notebook/)
     if Path(args.output_dir).is_absolute():
         fractured_aug_dir = Path(args.output_dir)
     else:
-        fractured_aug_dir = script_dir / args.output_dir
-    
+        fractured_aug_dir = notebook_dir / args.output_dir
+
     if Path(args.labels_dir).is_absolute():
         labels_dir = Path(args.labels_dir)
     else:
-        labels_dir = script_dir / args.labels_dir
-    
+        labels_dir = notebook_dir / args.labels_dir
+
     if Path(args.output_labels_dir).is_absolute():
         output_labels_dir = Path(args.output_labels_dir)
     else:
-        output_labels_dir = script_dir / args.output_labels_dir
+        output_labels_dir = notebook_dir / args.output_labels_dir
     
     # Create output directories
     fractured_aug_dir.mkdir(parents=True, exist_ok=True)
     output_labels_dir.mkdir(parents=True, exist_ok=True)
     
     # Load training split
-    distribution_dir = base_dir / "Distribution"
+    distribution_dir = notebook_dir / "Distribution"
     train_csv_path = distribution_dir / "train.csv"
     print(f"Loading training split from: {train_csv_path}")
     
@@ -196,23 +196,26 @@ def main():
             label_path = labels_dir / f"{img_path.stem}.txt"
             bboxes = parse_yolo_label(label_path)
             
-            # Extract class labels for albumentations
-            class_labels = [bbox[4] for bbox in bboxes] if bboxes else []
-            
             # Create augmented versions
             for aug_idx in range(args.augmentations_per_image):
-                # Prepare data for augmentation
-                data = {"image": image}
-                if bboxes:
-                    data["bboxes"] = bboxes
-                    data["class_labels"] = class_labels
-                
+                # Prepare data for augmentation — bboxes must be 4-coord only;
+                # class_labels are tracked separately so albumentations can drop
+                # them correctly when bboxes go out of bounds.
+                data = {
+                    "image": image,
+                    "bboxes": [[b[0], b[1], b[2], b[3]] for b in bboxes],
+                    "class_labels": [b[4] for b in bboxes],
+                }
+
                 # Apply augmentation
                 augmented = augmentation(**data)
                 aug_image = augmented['image']
-                
-                # Get transformed bounding boxes (if any)
-                aug_bboxes = augmented.get('bboxes', [])
+
+                # Reconstruct [x, y, w, h, class_id] from surviving bboxes + labels
+                aug_bboxes = [
+                    list(b) + [c]
+                    for b, c in zip(augmented['bboxes'], augmented['class_labels'])
+                ]
                 
                 # Generate filenames
                 original_stem = img_path.stem
@@ -302,15 +305,15 @@ def main():
 - New ratio: {non_fractured_count/(all_fractured + augmented_count):.2f}:1
 
 ## Augmentation Pipeline:
-- Horizontal flips (30% probability) - bounding boxes transformed
-- Small rotations (±10 degrees, 30% probability) - bounding boxes transformed  
-- Shift/scale/rotate combinations (20% probability) - bounding boxes transformed
-- Brightness/contrast adjustments (40% probability)
-- Extremely subtle Gaussian noise (20% probability)
-- Minimal Gaussian blur (10% probability)
-- Very mild elastic transforms (5% probability)
-- Subtle gamma adjustment (20% probability)
-- CLAHE enhancement (15% probability)
+- Horizontal flips (50% probability) - bounding boxes transformed
+- Rotations (±25 degrees, 50% probability) - bounding boxes transformed
+- Affine shift/scale/rotate combinations (40% probability) - bounding boxes transformed
+- Brightness/contrast adjustments (60% probability)
+- Gaussian noise (35% probability)
+- Gaussian blur (20% probability)
+- Elastic transforms (15% probability)
+- Gamma adjustment (35% probability)
+- CLAHE enhancement (25% probability)
 
 ## Notes:
 - Only images from the training split were augmented

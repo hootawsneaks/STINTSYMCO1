@@ -237,14 +237,15 @@ def main():
                        help="Exclude augmented images")
     args = parser.parse_args()
     
-    # Set up paths
-    base_dir = Path.cwd()
-    data_dir = base_dir / "datasets"
+    # Set up paths — all rooted in notebook/ regardless of CWD
+    script_dir = Path(__file__).parent
+    notebook_dir = script_dir.parent / "notebook"
+    data_dir = notebook_dir / "datasets"
     images_dir = data_dir / "images"
-    distribution_dir = base_dir / "Distribution"
-    yolo_labels_dir = base_dir.parent / "FracAtlas" / "Annotations" / "YOLO"
+    distribution_dir = notebook_dir / "Distribution"
+    yolo_labels_dir = script_dir.parent / "FracAtlas" / "Annotations" / "YOLO"
     output_dir = data_dir / "dataset"
-    
+
     # Augmented directories
     fractured_aug_dir = images_dir / "Fractured_Aug"
     augmented_labels_dir = data_dir / "labels" / "Fractured_Aug"
@@ -255,7 +256,7 @@ def main():
     print("="*60)
     print("DATASET ORGANIZATION")
     print("="*60)
-    print(f"Working directory: {base_dir}")
+    print(f"Notebook directory: {notebook_dir}")
     print(f"Output directory: {output_dir}")
     print(f"Include augmented: {has_augmented}")
     print(f"Dry run: {args.dry_run}")

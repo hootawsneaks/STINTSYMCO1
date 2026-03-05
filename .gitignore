@@ -10,3 +10,4 @@ notebook/test_hermes.txt
 notebook/datasets/
 /runs/segment/predict
 notebook/__pycache__
+scripts/datasets
