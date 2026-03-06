@@ -9,8 +9,8 @@ You are an expert deep learning assistant helping a student understand and imple
 ## Tech Stack
 
 - Language: Python 3
-- Deep Learning Framework: TensorFlow / Keras
-- Data Handling: `tf.data.Dataset` built from `dataset.csv` file paths + `tf.io` / `tf.image` ops
+- Deep Learning Framework: PyTorch + torchvision
+- Data Handling: Custom `torch.utils.data.Dataset` subclass built from `dataset.csv` file paths + `torchvision.transforms`
 - Output Environment: Jupyter Notebook
 
 ## Hardware Constraints
@@ -30,17 +30,16 @@ Two supported execution environments:
 - Batch Size: Up to 32–64.
 - Image Size: Can be increased to 384×384; EfficientNetB1/B2 are viable alternatives to MobileNetV2.
 - Dataset must be stored on Google Drive and mounted in Colab (`drive.mount('/content/drive')`).
-- The HDF5 pipeline is still recommended — Colab RAM is limited (12GB free / ~25GB Pro) and Drive I/O benefits from `.prefetch(tf.data.AUTOTUNE)`.
-- Free tier sessions disconnect after ~90 min idle; use `tf.keras.callbacks.ModelCheckpoint` to save progress.
+- Free tier sessions disconnect after ~90 min idle; use `torch.save()` with a `ModelCheckpoint`-style callback or manual checkpoint saves to preserve progress.
 
 ## Project Workflow (per spec)
 
 The notebook must follow this sequence — each step needs both code cells and markdown cells explaining the rationale:
 
-1. **Data Preparation** — read `dataset.csv` for file paths and labels, create stratified train/val/test splits, build `tf.data` pipelines
+1. **Data Preparation** — read `dataset.csv` for file paths and labels, create stratified train/val/test splits, build `DataLoader` pipelines
 2. **Exploratory Data Analysis (EDA)** — visualize sample images from each class, plot class imbalance, show pixel intensity distributions
-3. **Data Preprocessing** — normalize to `[0, 1]`, convert all images to RGB, resize to target dimensions, apply class weighting or oversampling to address imbalance
-4. **Model Selection & Training** — transfer learning architecture with frozen base, fit with appropriate callbacks
+3. **Data Preprocessing** — normalize with ImageNet mean/std, convert all images to RGB, resize to target dimensions, apply `WeightedRandomSampler` or `pos_weight` to address imbalance
+4. **Model Selection & Training** — transfer learning architecture with frozen base, manual training loop with optimizer and loss
 5. **Error Analysis & Model Tuning** — inspect misclassified samples, tune hyperparameters (learning rate, unfreeze top layers, dropout), iterate
 6. **Model Evaluation** — report accuracy, precision, recall, F1-score, and AUC-ROC; plot confusion matrix and ROC curve; explain why each metric matters given class imbalance
 
@@ -60,34 +59,36 @@ The notebook must follow this sequence — each step needs both code cells and m
 
 ### Pipeline construction (works on both Local and Colab)
 
-1. `tf.data.Dataset.from_tensor_slices((paths, labels))` for each split.
-2. `.map(load_and_preprocess_fn)` — uses `tf.io.read_file` → `tf.image.decode_jpeg(channels=3)` → `tf.image.resize([224, 224])` → scale to `[0, 1]`.
-3. Train set: `.shuffle(buffer_size).batch(batch_size).prefetch(tf.data.AUTOTUNE)`.
-4. Val/test sets: `.batch(batch_size).prefetch(tf.data.AUTOTUNE)` (no shuffle).
+1. Subclass `torch.utils.data.Dataset` — `__init__` stores the paths+labels lists, `__len__` returns the count, `__getitem__` opens one image by index.
+2. In `__getitem__`: open with `PIL.Image.open(path).convert("RGB")` → apply `torchvision.transforms` (resize to 224×224, `ToTensor()`, `Normalize(mean, std)`).
+3. Use ImageNet mean/std for normalization: `mean=[0.485, 0.456, 0.406]`, `std=[0.229, 0.224, 0.225]` — these match the pretraining distribution of MobileNetV2.
+4. Wrap each split's Dataset in a `torch.utils.data.DataLoader` with `batch_size=16`, `num_workers=2`, `pin_memory=True`.
+5. Train set: `shuffle=True`. Val/test sets: `shuffle=False`.
 
 ### Advantages of this approach
 
-- No extra dependencies or preprocessing scripts — reads JPEGs directly from disk.
-- Decode/resize/normalize happen inside the TF graph (no Python GIL bottleneck).
+- Full Python control — easy to debug one image at a time by calling `dataset[i]` directly.
+- `torchvision.transforms` are composable and readable — easy to add augmentation later.
 - Works identically on local and Colab (just change the root path).
 - Easy to explain at the oral exam.
 
 ### Class imbalance
 
 - Raw distribution: 717 fractured vs 3,366 non-fractured (~1:4.7 ratio).
-- Handle via `class_weight` dict passed to `model.fit()`, or oversample the minority class.
+- Handle via `WeightedRandomSampler` in the train `DataLoader` (oversamples the minority class per batch), or pass `pos_weight` to `torch.nn.BCEWithLogitsLoss` to up-weight fractured examples in the loss.
 
 ### Image quirks
 
-- Some images are grayscale (`mode=L`); `decode_jpeg(channels=3)` converts them to 3-channel automatically.
-- Most images are 373×454; ~9% are 2304×2880 (high-res). All are resized to the target dimensions by `tf.image.resize`.
+- Some images are grayscale (`mode=L`); `.convert("RGB")` in `__getitem__` handles this automatically.
+- Most images are 373×454; ~9% are 2304×2880 (high-res). All are resized to 224×224 by the transforms pipeline.
 
 ## Model Architecture Specifications
 
 - Approach: Transfer Learning.
-- Base Model: `MobileNetV2` or `EfficientNetB0` (loaded with `include_top=False` and frozen weights).
-- Head: `GlobalAveragePooling2D` followed by a `Dense` layer with a `sigmoid` activation function for binary classification.
-- Loss Function: Binary Cross-Entropy.
+- Base Model: `torchvision.models.mobilenet_v2(weights='IMAGENET1K_V1')` or `efficientnet_b0` — load pretrained, then freeze all base parameters by setting `param.requires_grad = False`.
+- Head: Replace the classifier with `nn.Sequential(nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Linear(in_features, 1))` for binary classification.
+- Loss Function: `torch.nn.BCEWithLogitsLoss` — combines sigmoid + binary cross-entropy in one numerically stable operation. Output raw logits from the model; do not apply sigmoid manually during training.
+- Optimizer: `torch.optim.Adam` on the unfrozen classifier parameters only.
 
 ## Coding Style & Academic Requirements
 
