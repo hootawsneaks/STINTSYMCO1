@@ -1,5 +1,7 @@
 from torch.utils.data import Dataset 
-from PIL import Image
+from PIL import Image, ImageFile
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class FractureDataset(Dataset):
     def __init__(self, paths, labels, transform):
