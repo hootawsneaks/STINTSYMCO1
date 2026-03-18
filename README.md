@@ -14,3 +14,4 @@
 
 1. Simply clone the repository.
 2. Run `uv sync` which should catch your environment up.
+3. Run it as a kernel on Jupyter notebook.
