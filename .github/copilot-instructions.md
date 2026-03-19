@@ -15,16 +15,17 @@ You are an expert deep learning assistant helping a student understand and imple
 
 ## Hardware Constraints
 
-Two supported execution environments:
+Execution environment: Google Colab (exclusive)
 
-### Option A — Local (default)
+<!-- ### Option A — Local (legacy, not in use)
 
-- GPU: Mobile RTX 3050 (strict 4GB VRAM limit).
+ - GPU: Mobile RTX 3050 (strict 4GB VRAM limit).
 - Memory Management: All data pipelines and model architectures must be optimized for low VRAM.
 - Batch Size: Maximum 16.
 - Image Size: Target 224×224.
+-->
 
-### Option B — Google Colab
+### Google Colab (active)
 
 - GPU: T4 (16GB VRAM, free tier) or A100 (40GB, Pro tier).
 - Batch Size: Up to 32–64.
