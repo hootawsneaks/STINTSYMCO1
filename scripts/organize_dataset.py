@@ -24,7 +24,7 @@ def parse_csv(csv_path):
                     img_id = parts[1].strip()
                     if img_id and img_id != "image_id":
                         image_ids.append(img_id)
-            elif line != "image_id":  # Regular CSV
+            elif line != "image_id": 
                 image_ids.append(line)
     
     return image_ids
@@ -37,12 +37,12 @@ def find_image_source(image_name, fractured_dir, non_fractured_dir, fractured_au
         if aug_path.exists():
             return aug_path, "augmented"
     
-    # Check Fractured
+    # check Fractured
     frac_path = fractured_dir / image_name
     if frac_path.exists():
         return frac_path, "fractured"
     
-    # Check Non_fractured
+    # check Non_fractured
     non_frac_path = non_fractured_dir / image_name
     if non_frac_path.exists():
         return non_frac_path, "non_fractured"
@@ -54,7 +54,7 @@ def find_label_source(image_name, label_type, yolo_labels_dir, augmented_labels_
     label_name = image_name.rsplit('.', 1)[0] + '.txt'
     
     if label_type == "augmented" and augmented_labels_dir:
-        # Augmented images have labels in augmented_labels_dir
+        # augmented images have labels in augmented_labels_dir
         label_path = augmented_labels_dir / label_name
         if label_path.exists():
             return label_path

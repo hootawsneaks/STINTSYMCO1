@@ -49,24 +49,24 @@ def write_yolo_label(label_path, bboxes):
 def create_xray_augmentation_pipeline():
     """Create realistic X-ray augmentation pipeline with bounding box support."""
     return A.Compose([
-        # Geometric transforms — more aggressive for diverse spatial variations
+        # geometric transforms — more aggressive for diverse spatial variations
         A.HorizontalFlip(p=0.5),  # 50%: symmetric body parts, realistic
         A.Rotate(limit=25, p=0.5),  # ±25°: patient positioning variance
         A.Affine(translate_percent=(-0.05, 0.05), scale=(0.90, 1.10), rotate=(-15, 15), p=0.4),
 
-        # Intensity/brightness — wider range to simulate exposure differences
+        # intensity/brightness — wider range to simulate exposure differences
         A.RandomBrightnessContrast(brightness_limit=0.15, contrast_limit=0.15, p=0.6),
 
-        # Noise — slightly more prominent quantum mottle
+        # noise — slightly more prominent quantum mottle
         A.GaussNoise(std_range=(0.02, 0.08), p=0.35),
 
-        # Blur — patient motion or slight defocus
+        # blur — patient motion or slight defocus
         A.GaussianBlur(blur_limit=(1, 5), p=0.2),
 
-        # Elastic transform — mild tissue/bone deformation
+        # elastic transform — mild tissue/bone deformation
         A.ElasticTransform(alpha=1.0, sigma=20, p=0.15),
 
-        # Gamma — wider exposure correction range
+        # gamma — wider exposure correction range
         A.RandomGamma(gamma_limit=(85, 115), p=0.35),
 
         # CLAHE — stronger contrast enhancement
@@ -89,14 +89,13 @@ def main():
                        help="Limit number of images to process (for testing)")
     args = parser.parse_args()
     
-    # Set up paths
     script_dir = Path(__file__).parent
     notebook_dir = script_dir.parent / "notebook"
     data_dir = notebook_dir / "datasets"
     images_dir = data_dir / "images"
     fractured_dir = images_dir / "Fractured"
     
-    # Handle output directories (relative paths resolved from notebook/)
+    # handle output directories (relative paths resolved from notebook/)
     if Path(args.output_dir).is_absolute():
         fractured_aug_dir = Path(args.output_dir)
     else:
@@ -112,16 +111,16 @@ def main():
     else:
         output_labels_dir = notebook_dir / args.output_labels_dir
     
-    # Create output directories
+    # create output directories
     fractured_aug_dir.mkdir(parents=True, exist_ok=True)
     output_labels_dir.mkdir(parents=True, exist_ok=True)
     
-    # Load training split
+    # load training split
     distribution_dir = notebook_dir / "Distribution"
     train_csv_path = distribution_dir / "train.csv"
     print(f"Loading training split from: {train_csv_path}")
     
-    # Simple CSV parsing (handles line number format from read_file)
+    # simple CSV parsing (handles line number format from read_file)
     training_image_ids = []
     if train_csv_path.exists():
         with open(train_csv_path, 'r') as f:
@@ -138,7 +137,7 @@ def main():
     
     print(f"Found {len(training_image_ids)} images in training set")
     
-    # Get all available fractured images
+    # get all available fractured images
     fractured_images = {}
     for ext in ['*.jpg', '*.jpeg', '*.png']:
         for img_path in fractured_dir.glob(ext):
@@ -146,7 +145,7 @@ def main():
     
     print(f"Found {len(fractured_images)} total fractured images")
     
-    # Filter to only training set fractured images
+    # filter to only training set fractured images
     training_fractured = []
     for img_id in training_image_ids:
         if img_id in fractured_images:
@@ -154,7 +153,7 @@ def main():
         else:
             print(f"Warning: Training image {img_id} not found in fractured folder")
     
-    # Apply limit if specified
+    # apply limit if specified
     if args.limit > 0 and args.limit < len(training_fractured):
         training_fractured = training_fractured[:args.limit]
         print(f"Limiting to first {args.limit} images (for testing)")
@@ -174,31 +173,31 @@ def main():
             print(f"  - {img_path.name} (label: {'yes' if has_label else 'no'})")
         return
     
-    # Create augmentation pipeline
+    # create augmentation pipeline
     augmentation = create_xray_augmentation_pipeline()
     
-    # Augment images and labels
+    # augment images and labels
     augmented_count = 0
     total_to_create = len(training_fractured) * args.augmentations_per_image
     
     for i, img_path in enumerate(training_fractured):
         try:
-            # Load image
+            # load image
             image = cv2.imread(str(img_path))
             if image is None:
                 print(f"Warning: Could not load {img_path.name}")
                 continue
             
-            # Convert BGR to RGB for albumentations
+            # convert BGR to RGB for albumentations
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             
-            # Load corresponding label
+            # load corresponding label
             label_path = labels_dir / f"{img_path.stem}.txt"
             bboxes = parse_yolo_label(label_path)
             
-            # Create augmented versions
+            # create augmented versions
             for aug_idx in range(args.augmentations_per_image):
-                # Prepare data for augmentation — bboxes must be 4-coord only;
+                # prepare data for augmentation — bboxes must be 4-coord only;
                 # class_labels are tracked separately so albumentations can drop
                 # them correctly when bboxes go out of bounds.
                 data = {
@@ -207,45 +206,44 @@ def main():
                     "class_labels": [b[4] for b in bboxes],
                 }
 
-                # Apply augmentation
+                # apply augmentation
                 augmented = augmentation(**data)
                 aug_image = augmented['image']
 
-                # Reconstruct [x, y, w, h, class_id] from surviving bboxes + labels
+                # reconstruct [x, y, w, h, class_id] from surviving bboxes + labels
                 aug_bboxes = [
                     list(b) + [c]
                     for b, c in zip(augmented['bboxes'], augmented['class_labels'])
                 ]
                 
-                # Generate filenames
+                # generate filenames
                 original_stem = img_path.stem
                 aug_filename = f"{original_stem}_aug{aug_idx+1:03d}.jpg"
                 aug_path = fractured_aug_dir / aug_filename
                 
-                # Convert back to BGR for saving
+                # convert back to BGR for saving
                 aug_image_bgr = cv2.cvtColor(aug_image, cv2.COLOR_RGB2BGR)
                 
-                # Save augmented image
+                # save augmented image
                 cv2.imwrite(str(aug_path), aug_image_bgr, [cv2.IMWRITE_JPEG_QUALITY, 95])
                 
-                # Save augmented label (if there were bounding boxes)
+                # save augmented label (if there were bounding boxes)
                 if aug_bboxes:
                     aug_label_filename = f"{original_stem}_aug{aug_idx+1:03d}.txt"
                     aug_label_path = output_labels_dir / aug_label_filename
                     write_yolo_label(aug_label_path, aug_bboxes)
-                elif label_path.exists():  # Original had empty label file
+                elif label_path.exists():  
                     aug_label_filename = f"{original_stem}_aug{aug_idx+1:03d}.txt"
                     aug_label_path = output_labels_dir / aug_label_filename
-                    # Create empty label file
                     open(aug_label_path, 'w').close()
                 
                 augmented_count += 1
                 
-                # Show progress
+                # show progress
                 if augmented_count % 50 == 0:
                     print(f"  Created {augmented_count}/{total_to_create} augmented images...")
             
-            # Show progress per original image
+            # show progress per original image
             if (i + 1) % 50 == 0:
                 print(f"Processed {i + 1}/{len(training_fractured)} original images")
                 
@@ -265,7 +263,7 @@ def main():
     print(f"\nImage output directory: {fractured_aug_dir.absolute()}")
     print(f"Label output directory: {output_labels_dir.absolute()}")
     
-    # Count all fractured images for ratio calculation
+    # count all fractured images for ratio calculation
     all_fractured = len(fractured_images)
     non_fractured_dir = images_dir / "Non_fractured"
     non_fractured_count = sum(1 for _ in non_fractured_dir.glob('*.jpg')) + \
@@ -282,7 +280,7 @@ def main():
     print(f"\nOriginal ratio (non-fractured:fractured): {non_fractured_count/all_fractured:.2f}:1")
     print(f"New ratio (non-fractured:total_fractured): {non_fractured_count/(all_fractured + augmented_count):.2f}:1")
     
-    # Save summary file
+    # save summary file
     summary_path = fractured_aug_dir / "augmentation_summary.txt"
     summary_content = f"""# Fractured Image Augmentation with Labels Summary
 
