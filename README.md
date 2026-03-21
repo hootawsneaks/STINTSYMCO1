@@ -15,3 +15,8 @@
 1. Simply clone the repository.
 2. Run `uv sync` which should catch your environment up.
 3. Run it as a kernel on Jupyter notebook.
+
+## Declaration of AI usage
+The group used Microsoft Copilot and Claude Sonnet 4.6 for:
+- Brainstorming ideas on what models can be implemented for the dataset
+- Brainstorming possible libraries (such as albumentations) and algorithms for certain problems
