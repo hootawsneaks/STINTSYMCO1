@@ -314,7 +314,7 @@ def main():
         print("="*55)
         optimizer = torch.optim.Adam(model.classifier.parameters(), lr=1e-3)
         train_one_stage(model, train_loader, val_loader, optimizer, criterion,
-                        device, num_epochs=10, val_threshold=args.threshold)
+                        device, num_epochs=30, val_threshold=args.threshold)
         ckpt1 = WEIGHTS_DIR / "finetunedNN.pth"
         torch.save(model.state_dict(), ckpt1)
         print(f"Saved: {ckpt1}")
@@ -336,7 +336,7 @@ def main():
             {"params": model.features[-1].parameters(), "lr": 1e-4},
         ])
         train_one_stage(model, train_loader, val_loader, optimizer, criterion,
-                        device, num_epochs=20, val_threshold=args.threshold)
+                        device, num_epochs=30, val_threshold=args.threshold)
         ckpt2 = WEIGHTS_DIR / "finetunedNN_2.0.pth"
         torch.save(model.state_dict(), ckpt2)
         print(f"Saved: {ckpt2}")

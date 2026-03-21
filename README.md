@@ -12,9 +12,10 @@
 
 > This project requires [uv](https://docs.astral.sh/uv/getting-started/installation/) as its package manager.
 
-1. Simply clone the repository.
-2. Run `uv sync` which should catch your environment up.
-3. Run it as a kernel on Jupyter notebook.
+1. Install the [FracAtlas Dataset](https://doi.org/10.6084/m9.figshare.22363012) and place it on the root directory inside the project.
+2. Clone the repository.
+3. Run `uv sync` which should catch your environment up.
+4. Run it as a kernel on Jupyter notebook.
 
 ## Declaration of AI usage
 The group used Microsoft Copilot and Claude Sonnet 4.6 for:
