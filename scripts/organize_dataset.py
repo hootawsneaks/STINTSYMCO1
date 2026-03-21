@@ -1,21 +1,4 @@
 #!/usr/bin/env python3
-"""
-organize_dataset.py
-
-Organizes dataset into YOLO-compatible train/valid/test directories.
-Replaces the old organize.py which only copied to Pred folder.
-
-Usage:
-  python3 organize_dataset.py [--dry-run] [--include-augmented]
-
-Creates:
-  datasets/dataset/train/images/, train/labels/
-  datasets/dataset/valid/images/, valid/labels/
-  datasets/dataset/test/images/, test/labels/
-
-For training set only, includes augmented images from Fractured_Aug/
-and corresponding labels from labels/Fractured_Aug/ if they exist.
-"""
 
 import os
 import sys
@@ -35,7 +18,7 @@ def parse_csv(csv_path):
             line = line.strip()
             if not line:
                 continue
-            if '|' in line:  # Line number format from read_file
+            if '|' in line:  
                 parts = line.split('|')
                 if len(parts) >= 2:
                     img_id = parts[1].strip()
@@ -48,7 +31,7 @@ def parse_csv(csv_path):
 
 def find_image_source(image_name, fractured_dir, non_fractured_dir, fractured_aug_dir=None):
     """Find where an image is located."""
-    # Check Fractured_Aug first if provided (for augmented images)
+   
     if fractured_aug_dir:
         aug_path = fractured_aug_dir / image_name
         if aug_path.exists():
@@ -75,15 +58,15 @@ def find_label_source(image_name, label_type, yolo_labels_dir, augmented_labels_
         label_path = augmented_labels_dir / label_name
         if label_path.exists():
             return label_path
-        # If not found, maybe it's an empty label (non-fractured augmented image)
+        
         return None
     
-    # Original images: check YOLO labels directory
+   
     label_path = yolo_labels_dir / label_name
     if label_path.exists():
         return label_path
     
-    # No label found - will create empty file for non-fractured images
+   
     return None
 
 def organize_split(split_name, csv_path, output_dir, fractured_dir, non_fractured_dir,
@@ -92,7 +75,7 @@ def organize_split(split_name, csv_path, output_dir, fractured_dir, non_fracture
     """Organize a single split."""
     print(f"\n=== Organizing {split_name.upper()} split ===")
     
-    # Create output directories
+   
     split_images_dir = output_dir / split_name / "images"
     split_labels_dir = output_dir / split_name / "labels"
     
@@ -100,7 +83,7 @@ def organize_split(split_name, csv_path, output_dir, fractured_dir, non_fracture
         split_images_dir.mkdir(parents=True, exist_ok=True)
         split_labels_dir.mkdir(parents=True, exist_ok=True)
         
-        # Clear existing files
+        
         for item in split_images_dir.iterdir():
             if item.is_file():
                 item.unlink()
@@ -108,7 +91,7 @@ def organize_split(split_name, csv_path, output_dir, fractured_dir, non_fracture
             if item.is_file():
                 item.unlink()
     
-    # Parse CSV
+    
     image_ids = parse_csv(csv_path)
     print(f"Found {len(image_ids)} images in CSV")
     
@@ -116,11 +99,11 @@ def organize_split(split_name, csv_path, output_dir, fractured_dir, non_fracture
         print("Warning: No images found in CSV!")
         return 0, 0
     
-    # Copy original images
+    
     stats = {"images": 0, "labels": 0, "errors": []}
     
     for idx, img_name in enumerate(image_ids, 1):
-        # Find image source
+       
         source_path, img_type = find_image_source(
             img_name, fractured_dir, non_fractured_dir,
             fractured_aug_dir if split_name == "train" else None
@@ -130,36 +113,36 @@ def organize_split(split_name, csv_path, output_dir, fractured_dir, non_fracture
             stats["errors"].append(f"Image not found: {img_name}")
             continue
         
-        # Find label source
+       
         label_source = find_label_source(
             img_name, img_type, yolo_labels_dir,
             augmented_labels_dir if split_name == "train" else None
         )
         
-        # Copy image
+        
         dest_image_path = split_images_dir / img_name
         if not dry_run:
             shutil.copy2(source_path, dest_image_path)
         stats["images"] += 1
         
-        # Copy or create label
+        
         dest_label_path = split_labels_dir / (img_name.rsplit('.', 1)[0] + '.txt')
         if label_source and not dry_run:
             shutil.copy2(label_source, dest_label_path)
             stats["labels"] += 1
         elif not dry_run:
-            # Create empty label file for non-fractured images
+            
             with open(dest_label_path, 'w') as f:
                 pass
             stats["labels"] += 1
         else:
-            stats["labels"] += 1  # Count for dry run
+            stats["labels"] += 1 
         
         # Progress
         if idx % 50 == 0 or idx == len(image_ids):
             print(f"  Processed {idx}/{len(image_ids)} images")
     
-    # For training set: add all augmented images (even if not in CSV)
+    
     if split_name == "train" and fractured_aug_dir and fractured_aug_dir.exists():
         print(f"\nAdding all augmented images to training set...")
         augmented_images = list(fractured_aug_dir.glob("*.jpg"))
@@ -168,29 +151,29 @@ def organize_split(split_name, csv_path, output_dir, fractured_dir, non_fracture
         for idx, aug_path in enumerate(augmented_images, 1):
             img_name = aug_path.name
             
-            # Skip if already copied (e.g., was in CSV)
+           
             if (split_images_dir / img_name).exists():
                 continue
             
-            # Find augmented label
+           
             label_source = None
             if augmented_labels_dir:
                 label_name = img_name.rsplit('.', 1)[0] + '.txt'
                 label_source = augmented_labels_dir / label_name
             
-            # Copy augmented image
+           
             dest_image_path = split_images_dir / img_name
             if not dry_run:
                 shutil.copy2(aug_path, dest_image_path)
             stats["images"] += 1
             
-            # Copy or create label
+            
             dest_label_path = split_labels_dir / (img_name.rsplit('.', 1)[0] + '.txt')
             if label_source and label_source.exists() and not dry_run:
                 shutil.copy2(label_source, dest_label_path)
                 stats["labels"] += 1
             elif not dry_run:
-                # Create empty label file
+                
                 with open(dest_label_path, 'w') as f:
                     pass
                 stats["labels"] += 1
@@ -201,7 +184,6 @@ def organize_split(split_name, csv_path, output_dir, fractured_dir, non_fracture
             if idx % 50 == 0 or idx == len(augmented_images):
                 print(f"  Processed {idx}/{len(augmented_images)} augmented images")
     
-    # Add non-fractured images with empty label files
     if nonfrac_images:
         print(f"\nAdding {len(nonfrac_images)} non-fractured images...")
         for idx, nf_path in enumerate(nonfrac_images, 1):
@@ -218,7 +200,7 @@ def organize_split(split_name, csv_path, output_dir, fractured_dir, non_fracture
             if idx % 100 == 0 or idx == len(nonfrac_images):
                 print(f"  Processed {idx}/{len(nonfrac_images)} non-fractured images")
 
-    # Summary
+
     print(f"\n{split_name.upper()} split summary:")
     print(f"  Images: {stats['images']}")
     print(f"  Labels: {stats['labels']}")
@@ -237,7 +219,7 @@ def main():
                        help="Exclude augmented images")
     args = parser.parse_args()
     
-    # Set up paths — all rooted in notebook/ regardless of CWD
+    
     script_dir = Path(__file__).parent
     notebook_dir = script_dir.parent / "notebook"
     data_dir = notebook_dir / "datasets"
@@ -246,11 +228,11 @@ def main():
     yolo_labels_dir = script_dir.parent / "FracAtlas" / "Annotations" / "YOLO"
     output_dir = data_dir / "dataset"
 
-    # Augmented directories
+   
     fractured_aug_dir = images_dir / "Fractured_Aug"
     augmented_labels_dir = data_dir / "labels" / "Fractured_Aug"
     
-    # Check if augmented images exist
+   
     has_augmented = args.include_augmented and fractured_aug_dir.exists() and any(fractured_aug_dir.glob("*.jpg"))
     
     print("="*60)
@@ -274,7 +256,7 @@ def main():
             print(f"Error: {desc} directory not found: {path}")
             sys.exit(1)
     
-    # Check CSV files
+    
     csv_files = {
         "train": distribution_dir / "train.csv",
         "valid": distribution_dir / "valid.csv",
@@ -286,7 +268,7 @@ def main():
             print(f"Error: {name} CSV not found: {path}")
             sys.exit(1)
     
-    # Split non-fractured images proportionally to match fractured split ratios
+   
     all_nonfrac = sorted((images_dir / "Non_fractured").glob("*.jpg")) + \
                   sorted((images_dir / "Non_fractured").glob("*.png"))
     random.seed(42)
@@ -310,12 +292,12 @@ def main():
 
     print(f"\nNon-fractured split: {n_nf_train} train | {n_nf_val} valid | {n_nf_test} test")
 
-    # Organize each split
+    
     total_images = 0
     total_labels = 0
 
     for split_name, csv_path in csv_files.items():
-        # Only pass augmented dirs for training split
+       
         split_aug_dir = fractured_aug_dir if (split_name == "train" and has_augmented) else None
         split_aug_labels = augmented_labels_dir if (split_name == "train" and has_augmented) else None
 
@@ -335,7 +317,7 @@ def main():
         total_images += images
         total_labels += labels
     
-    # Final summary
+    
     print(f"\n{'='*60}")
     print("ORGANIZATION COMPLETE!")
     print(f"{'='*60}")
@@ -345,7 +327,7 @@ def main():
     if not args.dry_run:
         print(f"\nDataset structure created at: {output_dir.absolute()}")
         
-        # Show counts
+        
         print("\nFile counts:")
         for split_name in ["train", "valid", "test"]:
             split_dir = output_dir / split_name
