@@ -1,19 +1,5 @@
 """
-train.py — Full MobileNetV3 training pipeline for fracture classification.
-
-Mirrors NN.ipynb but runs as a proper script, enabling num_workers > 0 on Windows.
-
-Usage:
-    python train.py
-    python train.py --batch-size 64 --workers 4
-    python train.py --threshold 0.35
-
-Stages:
-    1. Train classifier head only        (10 epochs, lr=1e-3)
-    2. Unfreeze features[-1]             (20 epochs, lr=1e-3 / 1e-4)
-    3. Unfreeze features[-1] + [-2]      (20 epochs, lr=1e-3 / 1e-4 / 1e-5)
-
-Checkpoints saved to ../weights/ after each stage.
+due to some quirks regarding the ipynb (specifically batch workers), essentially copy pasted the notebook but in py format.
 """
 
 import argparse
@@ -40,14 +26,13 @@ from torchvision import models, transforms
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
+
 SCRIPT_DIR   = Path(__file__).parent
 SPLIT_ROOT   = SCRIPT_DIR / ".." / "notebook" / "datasets" / "dataset"
 LABELS_CACHE = SPLIT_ROOT / "split_labels_cache.csv"
 WEIGHTS_DIR  = SCRIPT_DIR / ".." / "weights"
 
 
-# ── Dataset ───────────────────────────────────────────────────────────────────
 class FractureDataset(Dataset):
     def __init__(self, paths, labels, transform):
         self.paths     = paths
@@ -64,7 +49,6 @@ class FractureDataset(Dataset):
         return img, label
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
 def build_split_cache(split_root: Path, output_csv: Path) -> pl.DataFrame:
     image_exts = [".jpg", ".jpeg", ".png", ".bmp", ".webp"]
     rows = []
@@ -137,7 +121,6 @@ def train_one_stage(model, train_loader, val_loader, optimizer, criterion,
 
         train_loss /= len(train_loader.dataset)
 
-        # ── Validation ────────────────────────────────────────────────────────
         model.eval()
         val_loss = 0.0
         accuracy.reset(); precision.reset(); recall.reset(); f1.reset()
@@ -252,7 +235,6 @@ def evaluate(model, test_loader, device, threshold, checkpoint_name):
     plt.show()
 
 
-# ── Entry point ───────────────────────────────────────────────────────────────
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch-size",  type=int,   default=32)
@@ -269,7 +251,6 @@ def main():
 
     WEIGHTS_DIR.mkdir(exist_ok=True)
 
-    # ── Data ──────────────────────────────────────────────────────────────────
     split_root   = SPLIT_ROOT.resolve()
     labels_cache = LABELS_CACHE.resolve()
     cache_df = pl.read_csv(labels_cache) if labels_cache.exists() \
@@ -311,7 +292,6 @@ def main():
     val_loader   = make_loader(val_paths,   val_labels,   shuffle=False)
     test_loader  = make_loader(test_paths,  test_labels,  shuffle=False)
 
-    # ── Model ─────────────────────────────────────────────────────────────────
     model = models.mobilenet_v3_large(
         weights=models.MobileNet_V3_Large_Weights.DEFAULT
     )
@@ -327,7 +307,7 @@ def main():
     criterion  = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     print(f"pos_weight : {pos_weight.item():.4f}")
 
-    # ── Stage 1: classifier head only ─────────────────────────────────────────
+
     if not args.skip_stage1:
         print("\n" + "="*55)
         print("STAGE 1 — Classifier head (10 epochs)")
@@ -339,7 +319,6 @@ def main():
         torch.save(model.state_dict(), ckpt1)
         print(f"Saved: {ckpt1}")
 
-    # ── Stage 2: unfreeze features[-1] ────────────────────────────────────────
     if not args.skip_stage2:
         print("\n" + "="*55)
         print("STAGE 2 — + features[-1] (20 epochs)")
@@ -362,7 +341,6 @@ def main():
         torch.save(model.state_dict(), ckpt2)
         print(f"Saved: {ckpt2}")
 
-    # ── Stage 3: unfreeze features[-1] + features[-2] ─────────────────────────
     if not args.skip_stage3:
         print("\n" + "="*55)
         print("STAGE 3 — + features[-2] (20 epochs)")
@@ -388,7 +366,6 @@ def main():
         torch.save(model.state_dict(), ckpt3)
         print(f"Saved: {ckpt3}")
 
-    # ── Final evaluation on test set ──────────────────────────────────────────
     print("\n" + "="*55)
     print("FINAL EVALUATION ON TEST SET")
     print("="*55)
