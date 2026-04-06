@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-Augment fractured X-ray images WITH corresponding YOLO label transformations.
-For geometric augmentations (flips, rotations, etc.), bounding boxes are transformed accordingly.
-"""
+#again.. do i need this?
 
 import os
 import sys

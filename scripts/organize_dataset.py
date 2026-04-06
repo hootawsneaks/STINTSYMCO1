@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+# do shebangs affect anything i wonder??
 import os
 import sys
 import shutil
@@ -54,7 +55,7 @@ def find_label_source(image_name, label_type, yolo_labels_dir, augmented_labels_
     label_name = image_name.rsplit('.', 1)[0] + '.txt'
     
     if label_type == "augmented" and augmented_labels_dir:
-        # augmented images have labels in augmented_labels_dir
+        # add augmented labels
         label_path = augmented_labels_dir / label_name
         if label_path.exists():
             return label_path
@@ -192,7 +193,7 @@ def organize_split(split_name, csv_path, output_dir, fractured_dir, non_fracture
 
             if not dry_run:
                 shutil.copy2(nf_path, dest_image_path)
-                open(dest_label_path, 'w').close()  # empty label = no fracture
+                open(dest_label_path, 'w').close()  
 
             stats["images"] += 1
             stats["labels"] += 1
@@ -244,7 +245,6 @@ def main():
     print(f"Dry run: {args.dry_run}")
     print("="*60)
     
-    # Check required directories
     required_dirs = [
         (images_dir / "Fractured", "Fractured images"),
         (images_dir / "Non_fractured", "Non_fractured images"),
